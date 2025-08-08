@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายงานยอดรายได้</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Fonts - Inter -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            max-width: 1200px;
+            flex-grow: 1;
+        }
+        .card {
+            background-color: #2d3748; /* Darker card background */
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #4a5568;
+        }
+        th {
+            background-color: #4a5568;
+            color: #cbd5e0;
+            font-weight: 700;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr.total-row {
+            font-weight: bold;
+            background-color: #4a5568;
+        }
+        .text-green-400 { color: #48bb78; }
+        .text-yellow-400 { color: #ecc94b; }
+        /* Chart container to manage height */
+        .chart-container {
+            height: 300px; /* Default height for charts */
+        }
+        @media (min-width: 1024px) {
+            .chart-container {
+                height: 100%;
+            }
+        }
+        .data-input {
+            width: 120px;
+            background-color: #4a5568;
+            border: 1px solid #718096;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            color: #e2e8f0;
+        }
+        .data-input:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+        .country-name-input {
+            width: 150px;
+            background-color: #4a5568;
+            border: 1px solid #718096;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            color: #e2e8f0;
+        }
+        .country-name-input:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+        .flag-image {
+            width: 32px;
+            height: 24px;
+            object-fit: cover;
+            border-radius: 0.25rem;
+        }
+        .file-upload-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .file-upload-label {
+            background-color: #4299E1;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+        .file-upload-label:hover {
+            background-color: #3182CE;
+        }
+        .file-input {
+            display: none;
+        }
+        .gold-price-input {
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            color: #ecc94b;
+            font-size: 1rem;
+            text-align: center;
+            width: 150px;
+            margin-left: 1rem;
+        }
+        .gold-price-input:focus {
+            outline: none;
+            border-color: #ecc94b;
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col min-h-screen">
+
+    <div class="container mx-auto flex-grow flex flex-col">
+        <header class="text-center py-4 md:py-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-white mb-1">ระบบรายงานยอดรายได้แต่ละประเทศ</h1>
+            <p class="text-md md:text-lg text-gray-400">สรุปยอดรวมเงินและทองจาก 12 ประเทศ</p>
+        </header>
+
+        <!-- Overall Summary Section -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
+            <!-- Total Money Card -->
+            <div class="card p-4 md:p-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl md:text-2xl font-bold mb-1">ยอดรวมเงิน (บาท)</h2>
+                    <p id="total-money" class="text-3xl md:text-4xl font-extrabold text-green-400">0</p>
+                </div>
+                <div class="text-4xl md:text-5xl text-gray-500">
+                    <i class="fas fa-coins"></i>
+                </div>
+            </div>
+
+            <!-- Total Gold Card -->
+            <div class="card p-4 md:p-6 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl md:text-2xl font-bold mb-1">ยอดรวมทอง (เหรียญ)</h2>
+                    <p id="total-gold" class="text-3xl md:text-4xl font-extrabold text-yellow-400">0</p>
+                </div>
+                <div class="text-4xl md:text-5xl text-gray-500">
+                    <i class="fas fa-gem"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Visualization Section -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6 flex-grow">
+            <div class="card p-4 md:p-6 chart-container flex flex-col">
+                <h2 class="text-xl md:text-2xl font-bold mb-2">กราฟเปรียบเทียบยอดรายได้แต่ละประเทศ</h2>
+                <canvas id="countryBarChart" class="flex-grow"></canvas>
+            </div>
+            <div class="card p-4 md:p-6 chart-container flex flex-col">
+                <h2 class="text-xl md:text-2xl font-bold mb-2">สัดส่วนรายได้ทั้งหมด</h2>
+                <canvas id="revenuePieChart" class="flex-grow"></canvas>
+            </div>
+        </section>
+
+        <!-- Detailed Table Section -->
+        <section class="card p-4 md:p-6 overflow-x-auto flex-grow">
+            <h2 class="text-xl md:text-2xl font-bold mb-2 flex items-center">
+                ตารางสรุปยอดรายได้
+                <span class="ml-auto text-sm text-gray-400 flex items-center">
+                    ราคาทองกลาง (บาท/เหรียญ):
+                    <input type="number" id="gold-price" class="gold-price-input" value="5000">
+                </span>
+            </h2>
+            <form id="revenueForm">
+                <table class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>รูปธง</th>
+                            <th>ประเทศ</th>
+                            <th>ยอดเงิน (บาท)</th>
+                            <th>ยอดทอง (เหรียญ)</th>
+                            <th>ยอดรวม</th>
+                            <th>% ของทั้งหมด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+                <div class="mt-4 text-center">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full transition duration-300 transform hover:scale-105">
+                        <i class="fas fa-sync-alt mr-2"></i> อัปเดตข้อมูล
+                    </button>
+                </div>
+            </form>
+        </section>
+
+    </div>
+
+    <script>
+        // Initial country data. We will use a placeholder image for flags.
+        let countryData = [
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=TH', name: "ไทย", money: 1200000, gold: 800000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=JP', name: "ญี่ปุ่น", money: 1500000, gold: 1200000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=CN', name: "จีน", money: 2100000, gold: 1800000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=US', name: "อเมริกา", money: 1800000, gold: 1500000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=DE', name: "เยอรมนี", money: 900000, gold: 600000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=KR', name: "เกาหลีใต้", money: 1350000, gold: 950000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=SG', name: "สิงคโปร์", money: 1100000, gold: 750000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=AU', name: "ออสเตรเลีย", money: 1050000, gold: 700000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=GB', name: "อังกฤษ", money: 1400000, gold: 1000000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=BR', name: "บราซิล", money: 850000, gold: 550000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=IN', name: "อินเดีย", money: 1700000, gold: 1300000 },
+            { flagBase64: 'https://placehold.co/32x24/3182CE/FFFFFF?text=RU', name: "รัสเซีย", money: 980000, gold: 620000 }
+        ];
+
+        // Function to format numbers with commas
+        const formatNumber = (num) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+        // Chart instances
+        let countryBarChart;
+        let revenuePieChart;
+
+        // Custom Chart.js plugin to draw flag images on top of bars
+        const flagPlugin = {
+            id: 'flags',
+            afterDatasetsDraw(chart, args, options) {
+                const { ctx } = chart;
+                ctx.save();
+                
+                const datasetMeta = chart.getDatasetMeta(0);
+                const sortedData = options.custom.sortedData;
+                
+                datasetMeta.data.forEach((bar, index) => {
+                    const image = new Image();
+                    image.src = sortedData[index].flagBase64;
+                    const imageSize = 30; // Flag size
+                    const x = bar.x - imageSize / 2;
+                    const y = bar.y - imageSize - 5; // Position above the bar
+                    
+                    // Add a fall-back if image fails to load
+                    image.onerror = function() {
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillText('?', x + 10, y + 15);
+                    };
+                    
+                    ctx.drawImage(image, x, y, imageSize, imageSize * 0.75); // Draw the image
+                });
+                ctx.restore();
+            }
+        };
+
+        // Function to render the dashboard with current data
+        const renderDashboard = () => {
+            const goldPrice = parseInt(document.getElementById('gold-price').value) || 0;
+
+            // Create a temporary array to sort, so the original `countryData` is not reordered
+            // This is important for form inputs to maintain their correct indices
+            const sortedCountryData = [...countryData].map(country => ({
+                ...country,
+                totalRevenue: country.money + (country.gold * goldPrice)
+            })).sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+            // Calculate totals from the original countryData
+            const totalMoney = countryData.reduce((sum, country) => sum + country.money, 0);
+            const totalGold = countryData.reduce((sum, country) => sum + country.gold, 0);
+            const grandTotal = countryData.reduce((sum, country) => sum + country.money + (country.gold * goldPrice), 0);
+            
+            // Display totals in the summary cards
+            document.getElementById('total-money').innerText = formatNumber(totalMoney);
+            document.getElementById('total-gold').innerText = formatNumber(totalGold);
+            
+            // Populate the data table with sorted data
+            const tableBody = document.getElementById('data-table-body');
+            tableBody.innerHTML = ''; // Clear previous content
+            sortedCountryData.forEach((country, index) => {
+                const percentage = grandTotal > 0 ? ((country.totalRevenue / grandTotal) * 100).toFixed(2) : 0;
+                // Find the original index to link the form inputs
+                const originalIndex = countryData.findIndex(item => item.name === country.name);
+
+                const row = `
+                    <tr class="hover:bg-gray-700">
+                        <td>${index + 1}</td>
+                        <td class="flex items-center space-x-2">
+                            <img id="flag-preview-${originalIndex}" src="${country.flagBase64}" alt="${country.name} Flag" class="flag-image" onerror="this.onerror=null;this.src='https://placehold.co/32x24/3182CE/FFFFFF?text=?'">
+                            <label for="flag-upload-${originalIndex}" class="file-upload-label">เลือกรูปภาพ</label>
+                            <input type="file" id="flag-upload-${originalIndex}" class="file-input" data-country-index="${originalIndex}" data-type="flag" accept="image/*">
+                        </td>
+                        <td>
+                            <input type="text" class="country-name-input" value="${country.name}" data-country-index="${originalIndex}" data-type="name">
+                        </td>
+                        <td>
+                            <input type="number" class="data-input" value="${country.money}" data-country-index="${originalIndex}" data-type="money">
+                        </td>
+                        <td>
+                            <input type="number" class="data-input" value="${country.gold}" data-country-index="${originalIndex}" data-type="gold">
+                        </td>
+                        <td>${formatNumber(country.totalRevenue)}</td>
+                        <td>${percentage}%</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+
+            // Add event listeners for file uploads
+            document.querySelectorAll('.file-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        const countryIndex = e.target.dataset.countryIndex;
+                        reader.onload = (e) => {
+                            document.getElementById(`flag-preview-${countryIndex}`).src = e.target.result;
+                            countryData[countryIndex].flagBase64 = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            });
+
+            // Data for charts from sorted data
+            const countryNames = sortedCountryData.map(c => c.name);
+            const moneyData = sortedCountryData.map(c => c.money);
+            const goldData = sortedCountryData.map(c => c.gold * goldPrice);
+            const totalRevenueData = sortedCountryData.map(c => c.totalRevenue);
+
+            // Bar Chart
+            if (countryBarChart) countryBarChart.destroy();
+            const barCtx = document.getElementById('countryBarChart').getContext('2d');
+            countryBarChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: countryNames,
+                    datasets: [
+                        {
+                            label: 'เงิน',
+                            data: moneyData,
+                            backgroundColor: '#48bb78',
+                        },
+                        {
+                            label: 'ทอง (แปลงเป็นบาทแล้ว)',
+                            data: goldData,
+                            backgroundColor: '#ecc94b',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#e2e8f0' }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#e2e8f0' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0' }
+                        },
+                        // Pass sorted data to the plugin
+                        flags: {
+                            custom: { sortedData: sortedCountryData }
+                        }
+                    }
+                },
+                plugins: [flagPlugin]
+            });
+
+            // Pie Chart
+            if (revenuePieChart) revenuePieChart.destroy();
+            const pieCtx = document.getElementById('revenuePieChart').getContext('2d');
+            revenuePieChart = new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: countryNames,
+                    datasets: [{
+                        label: 'สัดส่วนรายได้ทั้งหมด',
+                        data: totalRevenueData,
+                        backgroundColor: [
+                            '#E53E3E', '#DD6B20', '#D69E2E', '#38A169', '#3182CE', '#805AD5', '#D53F8C', '#4A5568', '#4299E1', '#9F7AEA', '#F6E05E', '#9AE6B4'
+                        ],
+                        borderColor: '#1a202c',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0' }
+                        }
+                    }
+                }
+            });
+        };
+
+        // Initial render
+        document.addEventListener('DOMContentLoaded', renderDashboard);
+
+        // Event listener for form submission
+        document.getElementById('revenueForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Get all input fields
+            const nameInputs = document.querySelectorAll('input[data-type="name"]');
+            const moneyInputs = document.querySelectorAll('input[data-type="money"]');
+            const goldInputs = document.querySelectorAll('input[data-type="gold"]');
+
+            // Update countryData array with new values
+            nameInputs.forEach((input) => {
+                const index = parseInt(input.dataset.countryIndex);
+                countryData[index].name = input.value;
+            });
+            moneyInputs.forEach((input) => {
+                const index = parseInt(input.dataset.countryIndex);
+                countryData[index].money = parseInt(input.value) || 0;
+            });
+            goldInputs.forEach((input) => {
+                const index = parseInt(input.dataset.countryIndex);
+                countryData[index].gold = parseInt(input.value) || 0;
+            });
+
+            // Re-render the dashboard with the updated data
+            renderDashboard();
+        });
+        
+        // Event listener for gold price change
+        document.getElementById('gold-price').addEventListener('change', renderDashboard);
+        document.getElementById('gold-price').addEventListener('keyup', renderDashboard);
+    </script>
+</body>
+</html>
